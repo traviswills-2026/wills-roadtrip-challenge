@@ -10,7 +10,14 @@ const FAMILY = [
   { name: "Leah", color: "#EAB308" },
   { name: "Moriah", color: "#A855F7" },
 ];
-
+const DRIVER_WEIGHTS: Record<string, number> = {
+  Dad: 40,
+  Mom: 15,
+  Bekah: 15,
+  Micah: 15,
+  Leah: 7.5,
+  Moriah: 7.5,
+};
 export default function Home() {
   const [screen, setScreen] = useState("welcome");
 
@@ -28,6 +35,8 @@ export default function Home() {
   const [newTravelerColor, setNewTravelerColor] =
   useState("#EF4444");
   const [photoPreview, setPhotoPreview] = useState("");
+  const [currentDriver, setCurrentDriver] = useState("");
+const [previousDriver, setPreviousDriver] = useState("");
 
   function toggleTraveler(name: string) {
     if (selectedTravelers.includes(name)) {
@@ -84,7 +93,46 @@ export default function Home() {
   const imageUrl = URL.createObjectURL(file);
   setPhotoPreview(imageUrl);
 }
+function pickNextDriver() {
+  const allDrivers = [
+    ...selectedTravelers,
+    ...extraTravelers.map((t) => t.name),
+  ];
 
+  if (allDrivers.length === 0) {
+    alert("Add at least one traveler.");
+    return;
+  }
+
+  const eligibleDrivers = allDrivers.filter(
+    (driver) => driver !== previousDriver
+  );
+
+  let totalWeight = 0;
+
+  const weightedDrivers = eligibleDrivers.map((driver) => {
+    const weight = DRIVER_WEIGHTS[driver] ?? 5;
+
+    totalWeight += weight;
+
+    return {
+      driver,
+      weight,
+    };
+  });
+
+  let random = Math.random() * totalWeight;
+
+  for (const entry of weightedDrivers) {
+    random -= entry.weight;
+
+    if (random <= 0) {
+      setCurrentDriver(entry.driver);
+      setPreviousDriver(entry.driver);
+      return;
+    }
+  }
+}
   // WELCOME SCREEN
 
   if (screen === "welcome") {
@@ -108,7 +156,7 @@ export default function Home() {
         >
           <h1
             style={{
-              fontSize: "64px",
+              fontSize: "clamp(42px, 9vw, 64px)",
               fontWeight: 900,
               lineHeight: 0.9,
               letterSpacing: "3px",
@@ -123,7 +171,7 @@ export default function Home() {
 
           <p
             style={{
-              fontSize: "32px",
+              fontSize: "clamp(20px, 5vw, 32px)",
               fontWeight: 600,
               marginBottom: "30px",
             }}
@@ -133,7 +181,7 @@ export default function Home() {
 
           <p
             style={{
-              fontSize: "22px",
+              fontSize: "clamp(16px, 3vw, 22px)",
               lineHeight: 1.6,
               marginBottom: "40px",
             }}
@@ -277,7 +325,7 @@ if (screen === "dashboard") {
         >
           <h1
             style={{
-              fontSize: "56px",
+              fontSize: "clamp(38px, 8vw, 56px)",
               fontWeight: 900,
               marginBottom: "10px",
               lineHeight: 1,
@@ -289,7 +337,7 @@ if (screen === "dashboard") {
 
           <p
             style={{
-              fontSize: "24px",
+              fontSize: "clamp(18px, 4vw, 24px)",
               marginBottom: "20px",
               opacity: 0.95,
             }}
@@ -350,15 +398,34 @@ if (screen === "dashboard") {
             backdropFilter: "blur(4px)",
           }}
         >
-          <h2>🏆 Current Leader</h2>
+          <h2>🚗 Next Driver</h2>
 
-          <p>No leader yet.</p>
+{currentDriver ? (
+  <>
+    <div
+      style={{
+        fontSize: "32px",
+        fontWeight: 800,
+        marginTop: "12px",
+      }}
+    >
+      {currentDriver}
+    </div>
+
+    <p style={{ marginTop: "10px" }}>
+      Everyone gets a turn before repeats.
+    </p>
+  </>
+) : (
+  <p>No driver selected yet.</p>
+)}
         </div>
 
         {/* Driver Button */}
 
         <button
-          style={{
+  onClick={pickNextDriver}
+  style={{
             width: "100%",
             padding: "20px",
             fontSize: "24px",
@@ -397,7 +464,7 @@ if (screen === "dashboard") {
     <main
       style={{
         minHeight: "100vh",
-        background: "#4f4f4f",
+        backgroundColor: "#4f4f4f",
         color: "white",
         padding: "20px",
       }}
@@ -414,7 +481,7 @@ if (screen === "dashboard") {
         <h1
           style={{
             textAlign: "center",
-            fontSize: "56px",
+            fontSize: "clamp(36px, 8vw, 56px)",
             fontWeight: 900,
             lineHeight: 0.9,
             marginBottom: "10px",
@@ -428,7 +495,7 @@ if (screen === "dashboard") {
         <p
           style={{
             textAlign: "center",
-            fontSize: "28px",
+            fontSize: "clamp(18px, 4vw, 28px)",
             marginBottom: "30px",
           }}
         >
@@ -561,14 +628,17 @@ if (screen === "dashboard") {
   }}
 >
   {[
-    "#EF4444",
-    "#F97316",
-    "#EAB308",
-    "#22C55E",
-    "#3B82F6",
-    "#A855F7",
-    "#6B7280",
-  ].map((color) => (
+  "#14B8A6", // teal
+  "#06B6D4", // cyan
+  "#6366F1", // indigo
+  "#84CC16", // lime
+  "#F59E0B", // amber
+  "#DC2626", // red
+  "#64748B", // slate
+  "#92400E", // brown
+  "#F43F5E", // rose
+  "#10B981", // emerald
+].map((color) => (
     <button
       key={color}
       onClick={() =>
