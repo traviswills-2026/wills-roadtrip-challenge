@@ -38,6 +38,11 @@ export default function Home() {
   const [currentDriver, setCurrentDriver] = useState("");
 const [previousDriver, setPreviousDriver] = useState("");
 
+const [isPickingDriver, setIsPickingDriver] = useState(false);
+const [displayDriver, setDisplayDriver] = useState("");
+const [winnerFlash, setWinnerFlash] = useState(false);
+const [driverStatus, setDriverStatus] = useState("🎲 Ready to Pick");
+
   function toggleTraveler(name: string) {
     if (selectedTravelers.includes(name)) {
       setSelectedTravelers(
@@ -94,6 +99,8 @@ const [previousDriver, setPreviousDriver] = useState("");
   setPhotoPreview(imageUrl);
 }
 function pickNextDriver() {
+  if (isPickingDriver) return;
+
   const allDrivers = [
     ...selectedTravelers,
     ...extraTravelers.map((t) => t.name),
@@ -104,34 +111,111 @@ function pickNextDriver() {
     return;
   }
 
-  const eligibleDrivers = allDrivers.filter(
-    (driver) => driver !== previousDriver
+  setIsPickingDriver(true);
+  setDriverStatus("🎲 Choosing Driver...");
+const firstDriver =
+  allDrivers[
+    Math.floor(Math.random() * allDrivers.length)
+  ];
+
+setDisplayDriver(firstDriver);
+const spinSpeeds = [
+  75,
+  75,
+  75,
+  75,
+  100,
+  125,
+  150,
+  200,
+  300,
+  450,
+];
+
+let totalDelay = 0;
+
+spinSpeeds.forEach((delay, index) => {
+  totalDelay += delay;
+
+  setTimeout(() => {
+    if (index >= spinSpeeds.length - 3) {
+      setDriverStatus("🎯 Locking In...");
+    }
+
+    const randomDriver =
+      allDrivers[
+        Math.floor(Math.random() * allDrivers.length)
+      ];
+
+    setDisplayDriver(randomDriver);
+  }, totalDelay);
+});
+   
+setTimeout(() => {
+
+    const eligibleDrivers = allDrivers.filter(
+      (driver) => driver !== previousDriver
+    );
+
+    let totalWeight = 0;
+
+    const weightedDrivers = eligibleDrivers.map(
+      (driver) => {
+        const weight =
+          DRIVER_WEIGHTS[driver] ?? 5;
+
+        totalWeight += weight;
+
+        return {
+          driver,
+          weight,
+        };
+      }
+    );
+
+    let random =
+      Math.random() * totalWeight;
+
+    let winner = eligibleDrivers[0];
+
+    for (const entry of weightedDrivers) {
+      random -= entry.weight;
+
+      if (random <= 0) {
+        winner = entry.driver;
+        break;
+      }
+    }
+
+    setCurrentDriver(winner);
+    setDisplayDriver(winner);
+    setPreviousDriver(winner);
+
+    setWinnerFlash(true);
+
+    setTimeout(() => {
+    setWinnerFlash(false);
+  }, 600);
+
+setDriverStatus("🎉 Drives Next!");
+
+setIsPickingDriver(false);
+  }, totalDelay + 250);
+}
+function getTravelerColor(name: string) {
+  const familyTraveler = FAMILY.find(
+    (person) => person.name === name
   );
 
-  let totalWeight = 0;
-
-  const weightedDrivers = eligibleDrivers.map((driver) => {
-    const weight = DRIVER_WEIGHTS[driver] ?? 5;
-
-    totalWeight += weight;
-
-    return {
-      driver,
-      weight,
-    };
-  });
-
-  let random = Math.random() * totalWeight;
-
-  for (const entry of weightedDrivers) {
-    random -= entry.weight;
-
-    if (random <= 0) {
-      setCurrentDriver(entry.driver);
-      setPreviousDriver(entry.driver);
-      return;
-    }
+  if (familyTraveler) {
+    return familyTraveler.color;
   }
+
+  const extraTraveler = extraTravelers.find(
+    (person) => person.name === name
+  );
+
+  return extraTraveler?.color || "#FFFFFF";
 }
   // WELCOME SCREEN
 
@@ -400,24 +484,40 @@ if (screen === "dashboard") {
         >
           <h2>🚗 Next Driver</h2>
 
-{currentDriver ? (
+{displayDriver ? (
   <>
     <div
       style={{
-        fontSize: "32px",
-        fontWeight: 800,
-        marginTop: "12px",
-      }}
+  fontSize: "clamp(36px,8vw,56px)",
+  fontWeight: 800,
+  marginTop: "12px",
+  textTransform: "uppercase",
+  letterSpacing: "2px",
+  color: getTravelerColor(displayDriver),
+  transform: winnerFlash
+    ? "scale(1.5)"
+    : "scale(1)",
+  transition: "all 0.3s ease",
+  display: "inline-block",
+transformOrigin: "center center",
+}}
     >
-      {currentDriver}
+      {displayDriver}
     </div>
 
-    <p style={{ marginTop: "10px" }}>
-      Everyone gets a turn before repeats.
-    </p>
+    <p
+  style={{
+    marginTop: "12px",
+    opacity: 0.9,
+    fontWeight: 600,
+    letterSpacing: "1px",
+  }}
+>
+  {driverStatus}
+</p>
   </>
 ) : (
-  <p>No driver selected yet.</p>
+  <p>🎲 Ready to Pick</p>
 )}
         </div>
 
@@ -425,6 +525,7 @@ if (screen === "dashboard") {
 
         <button
   onClick={pickNextDriver}
+  disabled={isPickingDriver}
   style={{
             width: "100%",
             padding: "20px",
@@ -436,7 +537,9 @@ if (screen === "dashboard") {
             fontWeight: "bold",
           }}
         >
-          🎲 PICK NEXT DRIVER
+          {isPickingDriver
+  ? "🎲 PICKING DRIVER..."
+  : "🎲 PICK NEXT DRIVER"}
         </button>
 
         <button
