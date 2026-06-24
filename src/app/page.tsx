@@ -18,6 +18,109 @@ const DRIVER_WEIGHTS: Record<string, number> = {
   Leah: 7.5,
   Moriah: 7.5,
 };
+const SEATING_LAYOUTS = {
+  Dad: [
+    {
+      id: "D1",
+      seats: [
+        ["Dad", "Moriah", "Mom"],
+        ["Bekah", "Leah", "Micah"],
+      ],
+    },
+    {
+      id: "D2",
+      seats: [
+        ["Dad", "Mom", "Leah"],
+        ["Bekah", "Moriah", "Micah"],
+      ],
+    },
+    {
+      id: "D3",
+      seats: [
+        ["Dad", "Mom", "Moriah"],
+        ["Bekah", "Leah", "Micah"],
+      ],
+    },
+  ],
+
+  Mom: [
+    {
+      id: "M1",
+      seats: [
+        ["Mom", "Moriah", "Dad"],
+        ["Micah", "Leah", "Bekah"],
+      ],
+    },
+    {
+      id: "M2",
+      seats: [
+        ["Mom", "Moriah", "Micah"],
+        ["Dad", "Leah", "Bekah"],
+      ],
+    },
+    {
+      id: "M3",
+      seats: [
+        ["Mom", "Moriah", "Bekah"],
+        ["Dad", "Leah", "Micah"],
+      ],
+    },
+  ],
+
+  Micah: [
+    {
+      id: "MI1",
+      seats: [
+        ["Micah", "Moriah", "Mom"],
+        ["Bekah", "Leah", "Dad"],
+      ],
+    },
+    {
+      id: "MI2",
+      seats: [
+        ["Micah", "Moriah", "Dad"],
+        ["Mom", "Leah", "Bekah"],
+      ],
+    },
+  ],
+
+  Bekah: [
+    {
+      id: "B1",
+      seats: [
+        ["Bekah", "Moriah", "Mom"],
+        ["Dad", "Leah", "Micah"],
+      ],
+    },
+    {
+      id: "B2",
+      seats: [
+        ["Bekah", "Moriah", "Dad"],
+        ["Mom", "Leah", "Micah"],
+      ],
+    },
+  ],
+
+  Leah: [
+    {
+      id: "L1",
+      seats: [
+        ["Leah", "Mom", "Dad"],
+        ["Micah", "Moriah", "Bekah"],
+      ],
+    },
+  ],
+
+  Moriah: [
+    {
+      id: "MO1",
+      seats: [
+        ["Moriah", "Mom", "Dad"],
+        ["Micah", "Leah", "Bekah"],
+      ],
+    },
+  ],
+};
 export default function Home() {
   const [screen, setScreen] = useState("welcome");
 
@@ -37,11 +140,15 @@ export default function Home() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [currentDriver, setCurrentDriver] = useState("");
 const [previousDriver, setPreviousDriver] = useState("");
-
+const [seatLayoutId, setSeatLayoutId] = useState("");
+const [seatStatus, setSeatStatus] = useState("");
+const [seatAssignments, setSeatAssignments] = useState<string[][]>([]);
+const [isAssigningSeats, setIsAssigningSeats] = useState(false);
 const [isPickingDriver, setIsPickingDriver] = useState(false);
 const [displayDriver, setDisplayDriver] = useState("");
 const [winnerFlash, setWinnerFlash] = useState(false);
 const [driverStatus, setDriverStatus] = useState("🎲 Ready to Pick");
+const [scores, setScores] = useState<Record<string, number>>({});
 
   function toggleTraveler(name: string) {
     if (selectedTravelers.includes(name)) {
@@ -100,7 +207,9 @@ const [driverStatus, setDriverStatus] = useState("🎲 Ready to Pick");
 }
 function pickNextDriver() {
   if (isPickingDriver) return;
-
+setSeatAssignments([]);
+setSeatLayoutId("");
+setSeatStatus("");
   const allDrivers = [
     ...selectedTravelers,
     ...extraTravelers.map((t) => t.name),
@@ -199,7 +308,9 @@ setTimeout(() => {
 
 setDriverStatus("🎉 Drives Next!");
 
-setIsPickingDriver(false);
+setTimeout(() => {
+  assignSeats(winner);
+}, 1000);
   }, totalDelay + 250);
 }
 function getTravelerColor(name: string) {
@@ -216,6 +327,65 @@ function getTravelerColor(name: string) {
   );
 
   return extraTraveler?.color || "#FFFFFF";
+}
+function assignSeats(driver: string) {
+  const layouts =
+    SEATING_LAYOUTS[
+      driver as keyof typeof SEATING_LAYOUTS
+    ];
+
+  if (!layouts) return;
+
+  setIsAssigningSeats(true);
+  setSeatStatus("🪑 Assigning Seats...");
+
+  let totalDelay = 0;
+
+  const spinLayouts = [
+    ...layouts,
+    ...layouts,
+    ...layouts,
+  ];
+
+  spinLayouts.forEach((layout, index) => {
+    totalDelay +=
+      index < spinLayouts.length - 3
+        ? 100
+        : 250;
+
+   setTimeout(() => {
+  setSeatLayoutId(layout.id);
+  setSeatAssignments(layout.seats);
+}, totalDelay);
+  });
+
+  setTimeout(() => {
+    const winner =
+      layouts[
+        Math.floor(
+          Math.random() * layouts.length
+        )
+      ];
+
+    setSeatLayoutId(winner.id);
+    setSeatAssignments(winner.seats);
+    setSeatStatus("🎉 Seats Assigned!");
+
+setTimeout(() => {
+  setIsAssigningSeats(false);
+  setIsPickingDriver(false);
+}, 1000);
+  }, totalDelay + 300);
+}
+function awardPoints(
+  traveler: string,
+  points: number
+) {
+  setScores((prev) => ({
+    ...prev,
+    [traveler]:
+      (prev[traveler] || 0) + points,
+  }));
 }
   // WELCOME SCREEN
 
@@ -337,7 +507,10 @@ function getTravelerColor(name: string) {
 if (screen === "dashboard") {
   const travelerCount =
     selectedTravelers.length + extraTravelers.length;
-
+const allTravelers = [
+  ...selectedTravelers,
+  ...extraTravelers.map((t) => t.name),
+];
   return (
     <main
       style={{
@@ -471,6 +644,36 @@ if (screen === "dashboard") {
           </button>
         </div>
 
+        {/* Driver Button */}
+
+        <button
+  onClick={pickNextDriver}
+  disabled={
+  isPickingDriver || isAssigningSeats
+}
+  style={{
+  width: "100%",
+  padding: "20px",
+  fontSize: "24px",
+  marginBottom: "20px",
+  borderRadius: "16px",
+  border: "none",
+  cursor: "pointer",
+  fontWeight: "bold",
+  background: "#16A34A",
+  color: "white",
+  boxShadow: "0 8px 20px rgba(22,163,74,0.35)",
+}}
+        >
+          {isAssigningSeats
+  ? "🪑 ASSIGNING SEATS..."
+  : isPickingDriver
+  ? "🎲 PICKING DRIVER..."
+  : "🎲 PICK NEXT DRIVER"}
+        </button>
+
+
+
         {/* Leaderboard Card */}
 
         <div
@@ -521,41 +724,211 @@ transformOrigin: "center center",
 )}
         </div>
 
-        {/* Driver Button */}
+        {/* Seating Card */}
 
-        <button
-  onClick={pickNextDriver}
-  disabled={isPickingDriver}
-  style={{
-            width: "100%",
-            padding: "20px",
-            fontSize: "24px",
-            marginTop: "10px",
-            borderRadius: "16px",
-            border: "none",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          {isPickingDriver
-  ? "🎲 PICKING DRIVER..."
-  : "🎲 PICK NEXT DRIVER"}
-        </button>
-
-        <button
-          onClick={() => setScreen("setup")}
+        <div
           style={{
-            marginTop: "30px",
-            background: "transparent",
-            border: "1px solid white",
-            color: "white",
-            padding: "10px 16px",
-            borderRadius: "10px",
-            cursor: "pointer",
+            background: "rgba(255,255,255,0.12)",
+            borderRadius: "18px",
+            padding: "24px",
+            marginBottom: "20px",
+            backdropFilter: "blur(4px)",
           }}
         >
-          Back to Setup
-        </button>
+          <h2>🪑 Family Seating</h2>
+
+          {seatLayoutId && (
+            <>
+              <div
+                style={{
+                  fontSize: "32px",
+                  fontWeight: 800,
+                  marginTop: "10px",
+                  marginBottom: "10px",
+                }}
+              >
+                {seatLayoutId}
+              </div>
+
+              <p>{seatStatus}</p>
+            </>
+          )}
+
+{seatAssignments.length > 0 && (
+  <>
+    <div
+      style={{
+        marginTop: "20px",
+        textAlign: "center",
+        opacity: 0.9,
+        marginBottom: "12px",
+        fontWeight: 700,
+        letterSpacing: "1px",
+      }}
+    >
+      🚘 FRONT ROW
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: "10px",
+        marginBottom: "24px",
+      }}
+    >
+      {seatAssignments[0]?.map((person) => (
+        <div
+          key={person}
+          style={{
+            background: "rgba(255,255,255,0.18)",
+            borderRadius: "16px",
+            padding: "18px",
+            textAlign: "center",
+            fontWeight: 800,
+            color: getTravelerColor(person),
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          }}
+        >
+          {person}
+        </div>
+      ))}
+    </div>
+
+    <div
+      style={{
+        textAlign: "center",
+        opacity: 0.9,
+        marginBottom: "12px",
+        fontWeight: 700,
+        letterSpacing: "1px",
+      }}
+    >
+      🧳 BACK ROW
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: "10px",
+      }}
+    >
+      {seatAssignments[1]?.map((person) => (
+        <div
+          key={person}
+          style={{
+            background: "rgba(255,255,255,0.12)",
+            borderRadius: "16px",
+            padding: "18px",
+            textAlign: "center",
+            fontWeight: 800,
+            color: getTravelerColor(person),
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          {person}
+        </div>
+      ))}
+    </div>
+  </>
+)}
+
+        </div>
+
+{/* Leaderboard Card */}
+
+<div
+  style={{
+    background: "rgba(255,255,255,0.12)",
+    borderRadius: "18px",
+    padding: "24px",
+    marginBottom: "20px",
+    backdropFilter: "blur(4px)",
+  }}
+>
+  <h2>🏆 Trip Leaderboard</h2>
+
+  {allTravelers
+  .map((name) => ({
+    name,
+    score: scores[name] || 0,
+  }))
+  .sort((a, b) => b.score - a.score)
+  .map(({ name, score }, index) => (
+      <div
+        key={name}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          padding: "10px 0",
+          borderBottom:
+            index <
+            allTravelers.length - 1
+              ? "1px solid rgba(255,255,255,0.15)"
+              : "none",
+        }}
+      >
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  }}
+>
+  <span
+    style={{
+      color: getTravelerColor(name),
+      fontWeight: 700,
+    }}
+  >
+    {index === 0
+      ? "🥇 "
+      : index === 1
+      ? "🥈 "
+      : index === 2
+      ? "🥉 "
+      : ""}
+    {name}
+  </span>
+
+  <button
+    onClick={() => awardPoints(name, 5)}
+    style={{
+      border: "none",
+      borderRadius: "8px",
+      padding: "2px 8px",
+      cursor: "pointer",
+      fontWeight: 700,
+      fontSize: "12px",
+      background: getTravelerColor(name),
+      color: "white",
+    }}
+  >
+    +5
+  </button>
+</div>
+
+        <span>{score}</span>
+      </div>
+    ))}
+</div>
+
+<button
+  onClick={() => setScreen("setup")}
+  style={{
+    marginTop: "30px",
+    background: "transparent",
+    border: "1px solid white",
+    color: "white",
+    padding: "10px 16px",
+    borderRadius: "10px",
+    cursor: "pointer",
+  }}
+>
+  Back to Setup
+</button>
+
       </div>
     </main>
   );
